@@ -1,0 +1,154 @@
+###@Virtual Screening pipeline Pathania S.
+**********conversion of IUPAC into smiles
+java -jar opsin-1.2.0-jar-with-dependencies.jar -osmi <ZN_ana_indobine.name> ZN_ana_indobine.res
+
+********smiles to mol2
+cd /home/shivalika/openbabel
+babel -i smi RASE0015.mol2 -o mol2 RASE0015_nw.mol2 --gen3d -m
+
+******to run obabel:
+/home/shivalika/openbabel-2.3.1/build/bin/obabel -isdf eucalyptol.sdf -omol2 -Oeucalyptol.mol2
+/home/shivalika/openbabel-2.3.1/build/bin/obabel -imol2 sglt2_single_nw_file.mol2 -osdf -Osglt2_single_nw_file.sdf -m (for splitting)
+
+obabel [-i<input-type>] <infilename> [-o<output-type>] -O<outfilename> [Options]
+/home/shivalika/openbabel-2.3.1/build/bin/obabel -ismi INB_2012_NK13.smi -omol2 -OINB_2012_NK13.mol2 --gen3d -m
+home/shivalika/openbabel-2.3.1/build/bin/obabel -isdf *.sdf -omol2 -O*.mol2
+
+********conversion of multiple mol2 files to singl3 mol2 file
+/home/shivalika/openbabel-2.3.1/build/bin/obabel -f -imol2 *.mol2 -omol2 -OZN_ana_indobine_minimized.mol2
+
+*********to run obminimize
+/home/shivalika/openbabel-2.3.1/build/bin/obminimize -imol2 ZN_ana_indobine_unminimized.mol2 -omol2 > ZN_ana_indobine_minimized.mol2
+/home/shivalika/openbabel-2.3.1/build/bin/obminimize -n 500 -ff Ghemical -cg -sd -c 1e-5 -imol2 RASE00381.mol2 -omol2 > RASE0042.mol2
+/home/shivalika/openbabel-2.3.1/build/bin/obminimize -n 500 -sd -ff MMFF94 -imol2 ARI_decoys.mol2 -omol2 >  ARI_decoys_min.mol2
+
+/home/shivalika/openbabel-2.3.1/build/bin/obminimize -n 100 -sd -ff MMFF94 -isdf sglt2_single.sdf -osdf > sglt2_single_nw_fil e.sdf
+
+/home/shivalika/openbabel-2.3.1/build/bin/obabel -imol2 sglt1_single_nw_file.mol2 -osdf -Osglt1_single_nw_file.sdf
+
+
+for f in *.mol2
+  do
+  echo $f
+/home/shivalika/openbabel-2.3.1/build/bin/obminimize -n 500 -sd -ff MMFF94 -imol2 $f -omol2 >NW_$f
+ done
+
+
+OPTIONS
+If no filename is given, obminimize will give all options including theavailable forcefields.
+
+-n steps
+    Specify the maximum number of steps (default=2500)
+-cg
+    Use conjugate gradients alg             orithm (default)
+-sd
+    Use steepest descent algorithm
+-c criteria
+    Set convergence criteria (default=1e-6)
+-ff forcefield
+    Select the forcefield
+EXAMPLES
+
+View the possible options, including available forcefields:
+
+    "obminimize"
+
+Minimize the energy for the molecule(s) in file test.mol2:
+
+    "obminimize test.mol2"
+
+Minimize the energy for the molecule(s) in file test.mol2 using the Ghemical forcefield:
+
+    "obminimize -ff Ghemical test.mol2"
+
+Minimize the energy for the molecule(s) in file test.mol2 by takingat most 300 geometry optimization steps
+
+    "obminimize -n 300 test.mol2"
+
+Minimize the energy for the molecule(s) in file test.mol2 using the steepest descent algorithm and convergence criteria 1e-5:
+
+    "obminimize -sd -c 1e-5 test.mol2"
+
+mkdir INB_2012_NK13_molfiles
+mv *mol2 /home/shivalika/openbabel/INB_2012_NK13_molfiles
+
+********mol2 to pdbqt
+
+
+*****PREPARE_RECEPTOR
+
+/home/shivalika/MGLTools-1.5.4/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_receptor4.py -r 2SRC_remove_hetatm.pdb
+
+
+*********PREPARE_LIGAND
+
+for f in *
+  do
+  echo $f
+  /home/shivalika/MGLTools-1.5.4/bin/pythonsh ~/MGLTools-1.5.4/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py -l $f -A 'hydrogens'
+  done
+
+*******DOCK ALL LIGANDS
+
+    for f in *.pdbqt; do
+        b=`basename $f .pdbqt`
+        echo Processing ligand $b
+        mkdir -p $b
+        /home/shivalika/VINA/bin/vina --config conf.txt --ligand $f --out ${b}/out.pdbqt --log ${b}/log.txt
+	done                                                             
+
+
+********for single file
+/home/shivalika/VINA/bin/vina_split --input out.pdbqt 
+
+******SPLITING
+*******for multiple folder splitting
+sed "s/$/\/out.pdbqt/g" shiv | sed "s/^/\/home\/shivalika\/VINA\/bin\/vina_split --input /g" |sh
+*******for single folder splitting
+shivalika@shiva:~/PDM_data/ligand_docking/ANP$ /home/shivalika/VINA/bin/vina_split --input RASE0006_pubchem.pdbqt
+
+****pdbqt to pdb
+
+****for single folder
+cd ZINC04252701
+for file in *.pdbqt
+      do  /home/shivalika/MGLTools-1.5.4/MGLToolsPckgs/AutoDockTools/Utilities24/pdbqt_to_pdb.py -f $file;
+ done
+
+****for multiple folder
+
+command : sh some.sh
+
+#!/bin/bash
+while read i
+do
+echo $i
+cd $i
+for file in *.pdbqt
+      do  /home/shivalika/MGLTools-1.5.4/MGLToolsPckgs/AutoDockTools/Utilities24/pdbqt_to_pdb.py -f $file;
+ done
+cd ..
+done < "shiv"
+echo $i "DONE"
+******************conversion of multiple *.ps files to single pdf file
+gs -sDEVICE=pdfwrite -sOutputFile=sglt1_dlz_1.pdf -dBATCH -dNOPAUSE *.ps
+
+sed "s/^/mkdir /g" list_dir | sed "s/$/\/NEW/g"  >list_dir_new
+
+
+MSA-MUSCLE:
+
+/home/shivalika/MUSCLE/muscle3.8.31_i86linux32 -in sglt2_homologue_seqs_final.fa -out sglt2_homologue_seqs_final.afa
+/home/shivalika/MUSCLE/muscle3.8.31_i86linux32 -in sglt2_homologue_seqs_final.afa -out sglt2_homologue_seqs_final_refined.afa -refine
+/home/shivalika/MUSCLE/muscle3.8.31_i86linux32 -in sglt2_homologue_seqs_final.fa -fastaout sglt2_s.afa -clwout sglt2_se.aln
+
+/home/shivalika/MUSCLE/muscle3.8.31_i86linux32 -in seqs.fa -tree1 tree.phy
+/home/shivalika/MUSCLE/muscle3.8.31_i86linux32 -in sglt2_homologue_seqs_final.fa -out sglt2_homologue_seqs_final_clustal.afa -clwstrict
+
+belvu alignment viewr
+/home/shivalika/MUSCLE/seqtools-4.15/belvu sglt2_homologue_seqs_final_refined.afa
+
+AUTOGRID4 AND AUTODOCK4
+/home/shivalika/AUTODOCK/bin/autogrid4 -p ind_grid_parameter.gpf -l ind_grid_parameter.glg
+/home/shivalika/AUTODOCK/bin/autodock4 -p ind_dock_parameter.dpf -l ind_dock_parameter.dlg
+
